@@ -1,0 +1,4 @@
+services:
+#    entity_api.example:
+#        class: Vadik4646\EntityApiBundle\Example
+#        arguments: ["@service_id", "plain_value", "%parameter%"]

@@ -1,0 +1,3 @@
+entity_api_homepage:
+    path:     /
+    defaults: { _controller: EntityApiBundle:Default:index }
