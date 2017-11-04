@@ -1,3 +1,4 @@
 entity_api_homepage:
-    path:     /
-    defaults: { _controller: EntityApiBundle:Default:index }
+    resource: "@EntityApiBundle/Controller/GeneralController.php"
+    prefix:   /api
+    type:     annotation

@@ -1,4 +1,33 @@
 services:
-#    entity_api.example:
-#        class: Vadik4646\EntityApiBundle\Example
-#        arguments: ["@service_id", "plain_value", "%parameter%"]
+  entity_api.service:
+    class: Vadik4646\EntityApiBundle\Service\ApiEntity\ApiEntity
+    arguments: ["@entity_api.operation_factory", "@entity_api.param_provider_tree"]
+
+  entity_api.creator:
+    class: Vadik4646\EntityApiBundle\Service\ApiEntity\Creator
+    arguments: ["@entity_api.service"]
+
+  entity_api.storage:
+    class: Vadik4646\EntityApiBundle\Service\ApiEntity\Storage
+    arguments: ["%entity_api.entities_list%"]
+
+  entity_api.operation_factory:
+    class: Vadik4646\EntityApiBundle\Service\ApiEntity\Operations\OperationFactory
+    arguments: ["@entity_api.data_provider", "@entity_api.entity_configuration"]
+
+  entity_api.param_provider_tree:
+    class: Vadik4646\EntityApiBundle\Service\ApiEntity\ParamProviderTree
+
+  entity_api.data_provider:
+    class: Vadik4646\EntityApiBundle\Service\ApiEntity\DataProvider
+    arguments: ["@doctrine.orm.entity_manager", "@entity_api.dql_builder"]
+
+  entity_api.entity_configuration:
+    class: Vadik4646\EntityApiBundle\Service\ApiEntity\EntityConfiguration
+    arguments: ["@entity_api.storage"]
+
+  entity_api.dql_builder:
+    class: Vadik4646\EntityApiBundle\Service\ApiEntity\DqlBuilder
+
+  entity_api.criteria_param_factory:
+    class: Vadik4646\EntityApiBundle\Service\ApiEntity\CriteriaParamFactory
