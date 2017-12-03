@@ -4,7 +4,10 @@ namespace Vadik4646\EntityApiBundle\Service\ApiEntity;
 
 use Doctrine\Common\Collections\Expr\Expression;
 use Doctrine\ORM\QueryBuilder;
+use Vadik4646\EntityApiBundle\Annotations\Field;
+use Vadik4646\EntityApiBundle\Annotations\ManyToMany;
 use Vadik4646\EntityApiBundle\Annotations\ManyToOne;
+use Vadik4646\EntityApiBundle\Annotations\OneToOne;
 use Vadik4646\EntityApiBundle\Utils\RelationField;
 
 class DqlBuilder
@@ -51,21 +54,46 @@ class DqlBuilder
 
   /**
    * @param EntityConfiguration $entityConfiguration
-   * @param string              $tableAlias
-   * @return array
+   * @param ParamProviderTree   $paramProviderTree
+   * @param QueryBuilder        $queryBuilder
    */
-  public function buildSelect(EntityConfiguration $entityConfiguration, $tableAlias)
-  {
-    $fieldsMap = [];
-    foreach ($entityConfiguration->getFields() as $field) {
-      if ($field instanceof ManyToOne) {
-        $fieldsMap[] = 'IDENTITY(' . $tableAlias . '.' . $field->name . ') as ' . $field->name; // todo refactor
-      } elseif (!$field instanceof RelationField) {
-        $fieldsMap[] = $tableAlias . '.' . $field->name;
+  public function buildRelation(
+    EntityConfiguration $entityConfiguration,
+    ParamProviderTree $paramProviderTree,
+    QueryBuilder $queryBuilder
+  ) {
+    $entityAlias = $entityConfiguration->getEntityAlias();
+    $queryBuilder->addSelect($entityAlias);
+    foreach ($entityConfiguration->getRelationFields() as $field) {
+      if ($paramProviderTree->hasRelation($field->getName())) {
+        $relationEntityConfiguration = $entityConfiguration->create($field->getEntity());
+        $relationParamProviderTree = $paramProviderTree->createFromRelation($field->getName(), $field->getEntity());
+        $queryBuilder->leftJoin(
+          $entityAlias . '.' . $field->getName(),
+          $relationEntityConfiguration->getEntityAlias(),
+          'WITH'
+        );
+
+        $this->buildRelation($relationEntityConfiguration, $relationParamProviderTree, $queryBuilder);
       }
     }
+  }
 
-    return $fieldsMap;
+  /**
+   * @param QueryBuilder        $queryBuilder
+   * @param EntityConfiguration $entityConfiguration
+   * @param ParamProviderTree   $paramProviderTree
+   */
+  public function buildPkKeyCondition(
+    QueryBuilder $queryBuilder,
+    EntityConfiguration $entityConfiguration,
+    ParamProviderTree $paramProviderTree
+  ) {
+    $entityAlias = $entityConfiguration->getEntityAlias();
+    $pkKey = $entityConfiguration->getPkKey();
+    $pkValue = $paramProviderTree->getPk();
+    $pkCondition = $entityAlias . '.' . $queryBuilder->expr()->eq($pkKey, $pkValue);
+    $queryBuilder->where($pkCondition);
   }
 
   /**
@@ -123,7 +151,7 @@ class DqlBuilder
   /**
    * @param QueryBuilder        $queryBuilder
    * @param EntityConfiguration $entityConfiguration
-   * @param                     $criteriaParams
+   * @param array               $criteriaParams
    * @return mixed|null
    */
   private function buildSingleCondition(
@@ -136,11 +164,11 @@ class DqlBuilder
       return null;
     }
 
-    $tableAlias = $entityConfiguration->getTableAlias();
+    $entityAlias = $entityConfiguration->getEntityAlias();
     if ($relationField = $entityConfiguration->getRelationFieldByColumn($column)) {
-      $column = 'IDENTITY(' . $tableAlias . '.' . $relationField->name . ')';
+      $column = 'IDENTITY(' . $entityAlias . '.' . $relationField->name . ')';
     } else {
-      $column = $tableAlias . '.' . $column;
+      $column = $entityAlias . '.' . $column;
     }
 
     $currentOperation = self::$operationMapping[$operation];

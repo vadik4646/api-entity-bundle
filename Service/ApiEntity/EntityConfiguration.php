@@ -2,225 +2,89 @@
 
 namespace Vadik4646\EntityApiBundle\Service\ApiEntity;
 
-use Doctrine\Common\Annotations\AnnotationReader;
-use Vadik4646\EntityApiBundle\Annotations\Field;
-use Vadik4646\EntityApiBundle\Annotations\ManyToMany;
-use Vadik4646\EntityApiBundle\Annotations\ManyToOne;
-use Vadik4646\EntityApiBundle\Annotations\OneToMany;
-use Vadik4646\EntityApiBundle\Annotations\OneToOne;
-use Vadik4646\EntityApiBundle\Annotations\PrimaryKey;
-use Vadik4646\EntityApiBundle\Annotations\Table;
-use Vadik4646\EntityApiBundle\Service\ApiEntity\Relation\RelationFactory;
-use Vadik4646\EntityApiBundle\Service\ApiEntity\Relation\RelationInterface;
-use Vadik4646\EntityApiBundle\Utils\RelationField;
+use Vadik4646\EntityApiBundle\Service\ApiEntity\Configuration\ConfigurationBag;
+use Vadik4646\EntityApiBundle\Service\ApiEntity\Configuration\FieldConfiguration;
 
 class EntityConfiguration
 {
-  private static $entities = [];
-  private $table;
-  /** @var Field[] */
-  private $fields;
-  private $entityClass;
+  /** @var ConfigurationBag */
+  private $configurationBag;
   private $entityName;
-  private $storage;
+  private $entityAlias;
 
-  public function __construct(Storage $storage, $entityName = null)
+  public function __construct(ConfigurationBag $configurationBag, $entityName)
   {
-    $this->storage = $storage;
-    if ($entityName) {
-      $this->loadEntityConfig($entityName);
-    }
+    $this->configurationBag = $configurationBag;
+    $this->entityName = $entityName;
+    $this->configurationBag->processEntityConfiguration($entityName);
   }
 
   /**
-   * @param string $entityName
-   * @return EntityConfiguration
-   */
-  public function create($entityName)
-  {
-    return new self($this->storage, $entityName);
-  }
-
-  /**
-   * @return string
-   */
-  public function getTableName()
-  {
-    return $this->table->name;
-  }
-
-  /**
-   * @return string
-   */
-  public function getPkKey()
-  {
-    return $this->getPkKeyField()->name;
-  }
-
-  /**
-   * @return null|Field
-   */
-  public function getPkKeyField()
-  {
-    foreach ($this->fields as $field) {
-      if ($field instanceof PrimaryKey) {
-        return $field;
-      }
-    }
-
-    return null;
-  }
-
-  /**
-   * @return string
+   * @return null|string
    */
   public function getEntityClass()
   {
-    return $this->entityClass;
+    return $this->configurationBag->getEntityClass($this->entityName);
+  }
+
+  /**
+   * @return null|string
+   */
+  public function getPkKey()
+  {
+    return $this->configurationBag->getPkField($this->entityName)->getName();
+  }
+
+  /**
+   * @param $entity
+   * @return EntityConfiguration
+   */
+  public function create($entity)
+  {
+    return new self($this->configurationBag, $entity);
   }
 
   /**
    * @return string
    */
-  public function getTableAlias()
+  public function getEntityAlias()
   {
-    return $this->table->name[0];
+    if (!$this->entityAlias) {
+      $this->entityAlias = $this->configurationBag->generateAlias($this->entityName);
+    }
+    return $this->entityAlias;
   }
 
   /**
-   * @param string $entityName
+   * @return string
    */
-  private function loadEntityConfig($entityName)
-  {
-    $this->entityName = $entityName;
-    $this->entityClass = $this->storage->get($this->entityName);
-
-    if (array_key_exists($entityName, self::$entities)) {
-      $this->table = self::$entities[$entityName]['table'];
-      $this->fields = self::$entities[$entityName]['fields'];
-    } else {
-      $this->processTable();
-      $this->processFields();
-    }
-  }
-
-  public function hasRelationWith(EntityConfiguration $entityConfiguration)
-  {
-    $relationName = $entityConfiguration->getEntityName();
-
-    return $this->getFieldByEntityName($relationName) instanceof RelationField;
-  }
-
-  public function getRelationField(EntityConfiguration $relationEntityConfiguration)
-  {
-    $relationName = $relationEntityConfiguration->getEntityName();
-
-    return $this->getFieldByEntityName($relationName);
-  }
-
-  /**
-   * @param string $relationName
-   * @return null|RelationInterface
-   */
-  public function getRelationWith($relationName)
-  {
-    $field = $this->getFieldByEntityName($relationName);
-
-    if ($field instanceof OneToMany) {
-      return RelationFactory::get(RelationInterface::ONE_TO_MANY);
-    } elseif ($field instanceof ManyToOne) {
-      return RelationFactory::get(RelationInterface::MANY_TO_ONE);
-    } elseif ($field instanceof ManyToMany) {
-      return RelationFactory::get(RelationInterface::MANY_TO_MANY);
-    } elseif ($field instanceof OneToOne) {
-      return RelationFactory::get(RelationInterface::ONE_TO_ONE);
-    }
-
-    return null;
-  }
-
   public function getEntityName()
   {
     return $this->entityName;
   }
 
-  public function getFieldByEntityName($entityKey)
+  /**
+   * @return FieldConfiguration[]
+   */
+  public function getRelationFields()
   {
-    foreach ($this->fields as $field) { // todo move to relations bag, field bags
-      if ($field instanceof RelationField && $field->entity === $entityKey) {
-        return $field;
-      }
-    }
-
-    return null;
+    return $this->configurationBag->getRelationFields($this->entityName);
   }
 
   /**
-   * @param string $fieldName
-   * @return null|Field
+   * @param $relation
+   * @return FieldConfiguration
    */
-  public function getFieldByFieldName($fieldName)
+  public function getRelationField($relation)
   {
-    foreach ($this->fields as $field) { // todo move to relations bag, field bags
-      if ($field instanceof RelationField && $field->name === $fieldName) {
-        return $field;
-      }
-    }
-
-    return null;
+    return $this->configurationBag->getRelationField($this->entityName, $relation);
   }
 
   /**
-   * @return Field[]
+   * @return FieldConfiguration[]
    */
-  public function getFields()
+  public function getBuilders()
   {
-    return $this->fields;
-  }
-
-  /**
-   * @param string $key
-   * @return null|RelationField
-   */
-  public function getRelationFieldByColumn($key)
-  {
-    foreach ($this->fields as $field) {
-      if ($field instanceof RelationField && $field->name === $key) { // todo $field->field !?
-        return $field;
-      }
-    }
-
-    return null;
-  }
-
-  /**
-   * Parse table annotations on registered entities
-   */
-  private function processTable()
-  {
-    $reader = new AnnotationReader();
-    $reflectionClass = new \ReflectionClass($this->entityClass);
-    $this->table = $reader->getClassAnnotation($reflectionClass, Table::class); // todo only on php 7
-  }
-
-  /**
-   * Parse field annotations on registered entities
-   */
-  private function processFields()
-  {
-    $reader = new AnnotationReader();
-    $reflectionClass = new \ReflectionClass($this->entityClass);
-
-    $fieldTypes = FieldType::map();
-    foreach ($reflectionClass->getProperties() as $reflectionProperty) {
-      $reflectionProp = new \ReflectionProperty($this->entityClass, $reflectionProperty->getName());
-      foreach ($fieldTypes as $fieldType) {
-        $publicField = $reader->getPropertyAnnotation($reflectionProp, $fieldType);
-        if ($publicField) {
-          $publicField->name = $reflectionProp->name;
-          $this->fields[] = $publicField;
-        }
-      }
-    }
+    return $this->configurationBag->getBuilders($this->entityName);
   }
 }

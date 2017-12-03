@@ -2,13 +2,12 @@
 
 namespace Vadik4646\EntityApiBundle\Service\ApiEntity\Operations;
 
+use Vadik4646\EntityApiBundle\Service\ApiEntity\Configuration\ConfigurationBag;
 use Vadik4646\EntityApiBundle\Service\ApiEntity\DataProvider;
-use Vadik4646\EntityApiBundle\Service\ApiEntity\EntityConfiguration;
-use Vadik4646\EntityApiBundle\Service\ApiEntity\ResultManager;
 
 class OperationFactory
 {
-  private $entityConfiguration;
+  private $configurationBag;
   private $dataProvider;
 
   private $operations = [
@@ -20,22 +19,22 @@ class OperationFactory
 
   public function __construct(
     DataProvider $dataProvider,
-    EntityConfiguration $entityConfiguration
+    ConfigurationBag $configurationBag
   ) {
     $this->dataProvider = $dataProvider;
-    $this->entityConfiguration = $entityConfiguration;
+    $this->configurationBag = $configurationBag;
   }
 
   /**
    * @param $operation
-   * @return bool|OperationInterface
+   * @return null|OperationInterface
    */
   public function get($operation)
   {
     if (!array_key_exists($operation, $this->operations)) {
-      return false;
+      return null;
     }
 
-    return new $this->operations[$operation]($this->dataProvider, $this->entityConfiguration);
+    return new $this->operations[$operation]($this->dataProvider, $this->configurationBag);
   }
 }

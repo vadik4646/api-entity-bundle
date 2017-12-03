@@ -8,7 +8,7 @@ use Doctrine\Common\Annotations\Annotation;
  * @Annotation
  * @Target("CLASS")
  */
-class Table
+class Entity
 {
-  public $name;
+  public $name = null;
 }

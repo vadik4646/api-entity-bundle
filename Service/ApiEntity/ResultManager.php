@@ -5,22 +5,14 @@ namespace Vadik4646\EntityApiBundle\Service\ApiEntity;
 class ResultManager
 {
   private $result;
+  /** @var EntityConfiguration */
   private $entityConfiguration;
+  /** @var ParamProviderTree */
   private $paramProviderTree;
-  private $relationData = [];
 
   public function __construct($result)
   {
     $this->result = $result;
-  }
-
-  /**
-   * @param string        $relationKey
-   * @param ResultManager $data
-   */
-  public function setRelationData($relationKey, $data)
-  {
-    $this->relationData[$relationKey] = $data;
   }
 
   /**
@@ -62,51 +54,13 @@ class ResultManager
   }
 
   /**
-   * @return ResultManager[]
-   */
-  public function getRelationData()
-  {
-    return $this->relationData;
-  }
-
-  /**
    * @return array
    */
   public function getResult()
   {
+    $filterManager = new FilterManager();
+    $filterManager->filter($this->result, $this->entityConfiguration);
+
     return $this->result;
-  }
-
-  /**
-   * @param string $key
-   * @param string $value
-   * @return array
-   */
-  public function findRowsBy($key, $value)
-  {
-    $result = [];
-    foreach ($this->result as $row) {
-      if ($row[$key] == $value) {
-        $result[] = $row;
-      }
-    }
-
-    return $result;
-  }
-
-  /**
-   * @param string $key
-   * @param string $value
-   * @return array|null
-   */
-  public function findRowBy($key, $value)
-  {
-    foreach ($this->result as $row) {
-      if ($row[$key] == $value) {
-        return $row;
-      }
-    }
-
-    return null;
   }
 }

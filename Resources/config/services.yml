@@ -13,7 +13,7 @@ services:
 
   entity_api.operation_factory:
     class: Vadik4646\EntityApiBundle\Service\ApiEntity\Operations\OperationFactory
-    arguments: ["@entity_api.data_provider", "@entity_api.entity_configuration"]
+    arguments: ["@entity_api.data_provider", "@entity_api.configuration_bag"]
 
   entity_api.param_provider_tree:
     class: Vadik4646\EntityApiBundle\Service\ApiEntity\ParamProviderTree
@@ -22,12 +22,9 @@ services:
     class: Vadik4646\EntityApiBundle\Service\ApiEntity\DataProvider
     arguments: ["@doctrine.orm.entity_manager", "@entity_api.dql_builder"]
 
-  entity_api.entity_configuration:
-    class: Vadik4646\EntityApiBundle\Service\ApiEntity\EntityConfiguration
-    arguments: ["@entity_api.storage"]
-
   entity_api.dql_builder:
     class: Vadik4646\EntityApiBundle\Service\ApiEntity\DqlBuilder
 
-  entity_api.criteria_param_factory:
-    class: Vadik4646\EntityApiBundle\Service\ApiEntity\CriteriaParamFactory
+  entity_api.configuration_bag:
+    class: Vadik4646\EntityApiBundle\Service\ApiEntity\Configuration\ConfigurationBag
+    arguments: ["@entity_api.storage"]

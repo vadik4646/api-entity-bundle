@@ -7,8 +7,6 @@ use Doctrine\ORM\EntityManager;
 class DataProvider
 {
   private $entityManager;
-  private $paramProviderTree;
-  private $entityConfiguration;
   private $dqlBuilder;
 
   public function __construct(EntityManager $entityManager, DqlBuilder $dqlBuilder)
@@ -18,43 +16,35 @@ class DataProvider
   }
 
   /**
-   * @param ParamProviderTree $paramProviderTree
+   * @param ParamProviderTree   $paramProviderTree
    * @param EntityConfiguration $entityConfiguration
    * @return ResultManager
    */
   public function getData(ParamProviderTree $paramProviderTree, EntityConfiguration $entityConfiguration)
   {
-    $this->paramProviderTree = $paramProviderTree;
-    $this->entityConfiguration = $entityConfiguration;
-
     $queryBuilder = $this->entityManager->createQueryBuilder();
-    $tableAlias = $entityConfiguration->getTableAlias();
+    $entityAlias = $entityConfiguration->getEntityAlias();
 
-    $queryBuilder->select($this->dqlBuilder->buildSelect($entityConfiguration, $tableAlias));
-    $queryBuilder->from($entityConfiguration->getEntityClass(), $tableAlias);
+    $queryBuilder->from($entityConfiguration->getEntityClass(), $entityAlias);
+    $this->dqlBuilder->buildRelation($entityConfiguration, $paramProviderTree, $queryBuilder);
 
     $limit = null;
     $offset = null; // todo add default max limitation for limit
-
     if ($paramProviderTree->hasCriteria()) {
-      $criteriaParams = $paramProviderTree->getCriteria();
       $criteria = $this->dqlBuilder->buildCriteria(
         $queryBuilder,
         $entityConfiguration,
-        $criteriaParams
+        $paramProviderTree->getCriteria()
       ); // todo prepared queries
       $queryBuilder->where($criteria);
     }
 
     if ($paramProviderTree->hasPk()) {
-      $queryBuilder->where(
-        $tableAlias . '.' . $queryBuilder->expr()->eq($entityConfiguration->getPkKey(), $paramProviderTree->getPk())
-      );
-
-      return new ResultManager($queryBuilder->getQuery()->getArrayResult());
+      $this->dqlBuilder->buildPkKeyCondition($queryBuilder, $entityConfiguration, $paramProviderTree);
+      return new ResultManager($queryBuilder->getQuery()->getSingleResult());
     }
 
-    if ($paramProviderTree->hasOrder()) {
+    if ($paramProviderTree->hasOrder()) { // todo
       $order = $paramProviderTree->getOrder();
     }
 
@@ -66,6 +56,6 @@ class DataProvider
       $offset = $paramProviderTree->getOffset();
     }
 
-    return new ResultManager($queryBuilder->getQuery()->getArrayResult());
+    return new ResultManager($queryBuilder->getQuery()->getResult());
   }
 }

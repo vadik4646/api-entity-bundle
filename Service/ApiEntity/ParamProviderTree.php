@@ -153,6 +153,15 @@ class ParamProviderTree
   }
 
   /**
+   * @param string $relation
+   * @return bool
+   */
+  public function hasRelation($relation)
+  {
+    return in_array($relation, $this->getRelations());
+  }
+
+  /**
    * @return string
    */
   public function getEntity()
